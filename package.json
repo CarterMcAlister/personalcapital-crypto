@@ -1,0 +1,23 @@
+{
+  "name": "personalcapital-crypto",
+  "version": "1.0.0",
+  "description": "Keep your crypto asset balances updated in personalcapital",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CarterMcAlister/personalcapital-crypto.git"
+  },
+  "author": "Carter McAlister",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/CarterMcAlister/personalcapital-crypto/issues"
+  },
+  "homepage": "https://github.com/CarterMcAlister/personalcapital-crypto#readme",
+  "dependencies": {
+    "crypto-and-token-balances": "^1.0.0",
+    "personalcapital-js-telegram": "^2.1.1"
+  }
+}
