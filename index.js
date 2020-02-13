@@ -1,98 +1,108 @@
 const { PersonalCapital } = require('personalcapital-js-telegram')
-const { filter, asyncForEach, timeout, formatTicker } = require('./utils')
+const { asyncForEach, timeout, formatTicker } = require('./utils')
 const CryptoBalances = require('crypto-and-token-balances')
 const tcfs = require('tough-cookie-file-store')
 const request = require('request-promise-native')
-const userWallets = require('./wallets.json')
-const {
-  ETHPLORER_API_KEY,
-  COINMARKETCAP_API_KEY,
-  BLOCKONOMICS_API_KEY,
-  TELEGRAM_TOKEN,
-  TELEGRAM_CHAT_ID,
-  PERSONAL_CAPITAL_USERNAME,
-  PERSONAL_CAPITAL_PASSWORD
-} = require('./credentials.json')
 
-const PC_HOLDING_ACCOUNT_NAME = 'Cryptocurrencies'
+class PersonalCapitalCrypto {
+  constructor(credentials) {
+    Object.assign(this, credentials)
 
-const cryptoBalances = new CryptoBalances(
-  COINMARKETCAP_API_KEY,
-  ETHPLORER_API_KEY,
-  BLOCKONOMICS_API_KEY
-)
-
-const pc = new PersonalCapital(
-  (name = 'pcjs'),
-  (cookiejar = request.jar(new tcfs('./pc-cookie.json'))),
-  TELEGRAM_TOKEN,
-  TELEGRAM_CHAT_ID
-)
-
-async function authWithPersonalCapital() {
-  console.log('starting')
-  await pc.auth(PERSONAL_CAPITAL_USERNAME, PERSONAL_CAPITAL_PASSWORD)
-  console.log('auth complete')
-}
-
-async function createAssetsThatDoNotExist(cryptoAccount, walletData) {
-  const existingAssets = await filter(walletData, async asset => {
-    const ticker = formatTicker(asset.ticker)
-    if (asset.usdPrice) {
-      try {
-        await pc.getHoldingByTicker([cryptoAccount], ticker)
-        console.log(`found ${ticker}`)
-        return asset
-      } catch {
-        console.log(`adding ${ticker}`)
-        await pc.addHolding(
-          PC_HOLDING_ACCOUNT_NAME,
-          ticker,
-          '',
-          asset.balance,
-          asset.usdPrice
-        )
-        await timeout(8000)
-        return false
-      }
-    }
-    return false
-  })
-
-  return existingAssets
-}
-
-async function updateBalances(cryptoAccount, assets) {
-  await asyncForEach(assets, async asset => {
-    const ticker = formatTicker(asset.ticker)
-    console.log(`updating ${ticker}`)
-    await pc.updateHolding(
-      [cryptoAccount],
-      ticker,
-      asset.balance,
-      asset.usdPrice
+    this.cryptoBalances = new CryptoBalances(
+      this.COINMARKETCAP_API_KEY,
+      this.ETHPLORER_API_KEY,
+      this.BLOCKONOMICS_API_KEY
     )
-    await timeout(8000)
-  })
+    
+    this.pc = new PersonalCapital(
+      'pcjs',
+      request.jar(new tcfs('./pc-cookie.json')),
+      this.TELEGRAM_TOKEN,
+      this.TELEGRAM_CHAT_ID
+    )
+  }
+
+
+  async authWithPersonalCapital() {
+    console.log('starting')
+    try {
+      await this.pc.auth(this.PERSONAL_CAPITAL_USERNAME, this.PERSONAL_CAPITAL_PASSWORD)
+    } catch(e) {
+      console.log(e)
+      throw 'Failed to auth with personal capital!'
+    }
+    console.log('auth complete')
+  }
+
+  async createAssetsThatDoNotExist(cryptoAccount, walletData) {
+    const pcHoldingAccountName = this.PC_HOLDING_ACCOUNT_NAME
+    await asyncForEach(walletData, async asset => {
+      const ticker = formatTicker(asset.ticker)
+      if (asset.usdPrice) {
+        try {
+          await this.pc.getHoldingByTicker([cryptoAccount], ticker)
+          console.log(`found ${ticker}`)
+        } catch {
+          console.log(`adding ${ticker}`)
+          try {
+            await this.pc.addHolding(
+              pcHoldingAccountName,
+              ticker,
+              '',
+              asset.balance,
+              asset.usdPrice
+            )
+          } catch(e) {
+            console.log(`failed to add ${ticker}`, e)
+          }
+          
+          await timeout(8000)
+        }
+      }
+    })
+  }
+
+  async updateBalances(cryptoAccount, assets) {
+    await asyncForEach(assets, async asset => {
+      if (asset.usdPrice) {
+        const ticker = formatTicker(asset.ticker)
+        console.log(`updating ${ticker}`)
+        try {
+          await this.pc.updateHolding(
+            [cryptoAccount],
+            ticker,
+            asset.balance,
+            asset.usdPrice
+          )
+          console.log(`updated ${ticker}!`)
+        } catch(e) {
+          console.log(`failed to update ${ticker}`, e)
+        }
+        await timeout(8000)
+      }
+    })
+  }
+
+  async updateAssetsInPersonalCapital(userWallets) {
+    await this.authWithPersonalCapital()
+
+    const walletData = await this.cryptoBalances.getBalances(userWallets)
+    const pcAccounts = await this.pc.getAccounts()
+
+    const cryptoAccount = pcAccounts.filter(
+      account => account.name === this.PC_HOLDING_ACCOUNT_NAME
+    )[0]
+
+    if (cryptoAccount) {
+      await this.createAssetsThatDoNotExist(cryptoAccount, walletData)
+      await this.updateBalances(cryptoAccount, walletData)
+    } else {
+      console.log(
+        `Personal Capital account ${this.PC_HOLDING_ACCOUNT_NAME} not found!`
+      )
+    }
+  }
+
 }
 
-const main = async () => {
-  await authWithPersonalCapital()
-
-  const walletData = await cryptoBalances.getBalances(userWallets)
-  const pcAccounts = await pc.getAccounts()
-
-  const cryptoAccount = pcAccounts.filter(
-    account => account.name === PC_HOLDING_ACCOUNT_NAME
-  )[0]
-
-  const existingAssets = await createAssetsThatDoNotExist(
-    cryptoAccount,
-    walletData
-  )
-  await updateBalances(cryptoAccount, existingAssets)
-
-  return ''
-}
-
-main().then(() => process.exit())
+module.exports = PersonalCapitalCrypto
