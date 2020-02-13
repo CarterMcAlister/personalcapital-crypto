@@ -96,11 +96,14 @@ class PersonalCapitalCrypto {
     if (cryptoAccount) {
       await this.createAssetsThatDoNotExist(cryptoAccount, walletData)
       await this.updateBalances(cryptoAccount, walletData)
+      console.log('Finished updating accounts!')
+      console.log()
     } else {
       console.log(
         `Personal Capital account ${this.PC_HOLDING_ACCOUNT_NAME} not found!`
       )
     }
+    return 
   }
 
 }
