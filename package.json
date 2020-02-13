@@ -1,6 +1,6 @@
 {
   "name": "personalcapital-crypto",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Keep your crypto asset balances updated in personalcapital",
   "main": "index.js",
   "scripts": {
