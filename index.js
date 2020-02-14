@@ -13,21 +13,23 @@ class PersonalCapitalCrypto {
       this.ETHPLORER_API_KEY,
       this.BLOCKONOMICS_API_KEY
     )
-    
+
     this.pc = new PersonalCapital(
       'pcjs',
-      request.jar(new tcfs('./pc-cookie.json')),
+      request.jar(new tcfs('/tmp/pc-cookie.json')),
       this.TELEGRAM_TOKEN,
       this.TELEGRAM_CHAT_ID
     )
   }
 
-
   async authWithPersonalCapital() {
     console.log('starting')
     try {
-      await this.pc.auth(this.PERSONAL_CAPITAL_USERNAME, this.PERSONAL_CAPITAL_PASSWORD)
-    } catch(e) {
+      await this.pc.auth(
+        this.PERSONAL_CAPITAL_USERNAME,
+        this.PERSONAL_CAPITAL_PASSWORD
+      )
+    } catch (e) {
       console.log(e)
       throw 'Failed to auth with personal capital!'
     }
@@ -52,10 +54,10 @@ class PersonalCapitalCrypto {
               asset.balance,
               asset.usdPrice
             )
-          } catch(e) {
+          } catch (e) {
             console.log(`failed to add ${ticker}`, e)
           }
-          
+
           await timeout(8000)
         }
       }
@@ -75,7 +77,7 @@ class PersonalCapitalCrypto {
             asset.usdPrice
           )
           console.log(`updated ${ticker}!`)
-        } catch(e) {
+        } catch (e) {
           console.log(`failed to update ${ticker}`, e)
         }
         await timeout(8000)
@@ -103,9 +105,8 @@ class PersonalCapitalCrypto {
         `Personal Capital account ${this.PC_HOLDING_ACCOUNT_NAME} not found!`
       )
     }
-    return 
+    return
   }
-
 }
 
 module.exports = PersonalCapitalCrypto
